@@ -1,0 +1,844 @@
+:root {
+	--strip: #dfe3e8;
+	--tab-hover: #eceff2;
+	--toolbar: #ffffff;
+	--omni: #eef1f4;
+	--omni-focus: #ffffff;
+	--text: #1f1f1f;
+	--muted: #5f6368;
+	--border: #d3d7dc;
+	--accent: #1a73e8;
+	--accent-text: #ffffff;
+	--danger: #d93025;
+	--ok: #188038;
+	--pane: #ffffff;
+	--menu: #ffffff;
+	--shadow: 0 8px 28px rgba(0, 0, 0, 0.18), 0 1px 3px rgba(0, 0, 0, 0.12);
+	color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--strip: #1d1e21;
+		--tab-hover: #292a2e;
+		--toolbar: #34353a;
+		--omni: #222326;
+		--omni-focus: #1a1b1d;
+		--text: #e8eaed;
+		--muted: #a6a9ae;
+		--border: #45464b;
+		--accent: #8ab4f8;
+		--accent-text: #1a1b1d;
+		--danger: #f28b82;
+		--ok: #81c995;
+		--pane: #202124;
+		--menu: #2b2c30;
+		--shadow: 0 10px 32px rgba(0, 0, 0, 0.55), 0 1px 3px rgba(0, 0, 0, 0.4);
+		color-scheme: dark;
+	}
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	margin: 0;
+	height: 100%;
+	overflow: hidden;
+	background: var(--strip);
+	color: var(--text);
+	font: 13px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
+}
+
+button {
+	font: inherit;
+	color: inherit;
+}
+
+#app {
+	height: 100%;
+}
+
+.boot-error {
+	display: grid;
+	place-items: center;
+	padding: 24px;
+	color: var(--danger);
+}
+
+/* ---------- layout ---------- */
+
+.browser {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+}
+
+.chrome {
+	flex: none;
+	background: var(--strip);
+	user-select: none;
+}
+
+.viewport {
+	position: relative;
+	flex: 1;
+	min-height: 0;
+	background: var(--pane);
+}
+
+.pane {
+	position: absolute;
+	inset: 0;
+	display: none;
+}
+
+.pane.active {
+	display: block;
+}
+
+.frame {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	border: 0;
+	background: #fff;
+}
+
+/* ---------- tab strip ---------- */
+
+.tabstrip {
+	display: flex;
+	align-items: flex-end;
+	height: 40px;
+	padding: 0 8px;
+	gap: 4px;
+}
+
+.tabs {
+	display: flex;
+	align-items: flex-end;
+	min-width: 0;
+	height: 100%;
+	overflow-x: auto;
+	scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+	display: none;
+}
+
+.tab {
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex: 0 1 236px;
+	min-width: 56px;
+	height: 34px;
+	padding: 0 8px 0 12px;
+	border-radius: 10px 10px 0 0;
+	cursor: default;
+	color: var(--muted);
+	transition: background-color 0.12s;
+}
+
+/* separators between inactive tabs */
+.tab::after {
+	content: "";
+	position: absolute;
+	right: 0;
+	top: 10px;
+	bottom: 10px;
+	width: 1px;
+	background: var(--border);
+}
+
+.tab.active::after,
+.tab:has(+ .tab.active)::after,
+.tab:last-child::after {
+	display: none;
+}
+
+.tab:hover:not(.active) {
+	background: var(--tab-hover);
+}
+
+.tab.active {
+	background: var(--toolbar);
+	color: var(--text);
+	z-index: 1;
+}
+
+/* the little curves where the active tab meets the toolbar */
+.tab.active::before {
+	content: "";
+	position: absolute;
+	bottom: 0;
+	left: -10px;
+	right: -10px;
+	height: 10px;
+	background:
+		radial-gradient(circle at 0 0, transparent 9.5px, var(--toolbar) 10px) left bottom / 10px 10px no-repeat,
+		radial-gradient(circle at 100% 0, transparent 9.5px, var(--toolbar) 10px) right bottom / 10px 10px no-repeat;
+	pointer-events: none;
+}
+
+.tab-icon {
+	flex: none;
+	display: grid;
+	place-items: center;
+	width: 16px;
+	height: 16px;
+}
+
+.tab-icon img {
+	width: 16px;
+	height: 16px;
+	object-fit: contain;
+}
+
+.tab-icon:empty {
+	display: none;
+}
+
+.tab-title {
+	flex: 1;
+	min-width: 0;
+	white-space: nowrap;
+	overflow: hidden;
+	mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent);
+}
+
+.tab-close {
+	flex: none;
+	display: grid;
+	place-items: center;
+	width: 20px;
+	height: 20px;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	background: transparent;
+	color: var(--muted);
+	cursor: pointer;
+}
+
+.tab-close:hover {
+	background: var(--tab-hover);
+	color: var(--text);
+}
+
+.tab.active .tab-close:hover {
+	background: var(--omni);
+}
+
+.spinner {
+	width: 14px;
+	height: 14px;
+	border: 2px solid var(--border);
+	border-top-color: var(--accent);
+	border-radius: 50%;
+	animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+/* ---------- toolbar ---------- */
+
+.toolbar {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	height: 44px;
+	padding: 0 8px;
+	background: var(--toolbar);
+}
+
+.icon-btn {
+	position: relative;
+	flex: none;
+	display: grid;
+	place-items: center;
+	width: 34px;
+	height: 34px;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	background: transparent;
+	color: var(--text);
+	cursor: pointer;
+}
+
+.icon-btn:hover:not(:disabled) {
+	background: var(--tab-hover);
+}
+/* a toggle that's on (developer tools open for this tab) */
+.icon-btn.on {
+	color: var(--accent);
+}
+
+.tabstrip .icon-btn {
+	width: 28px;
+	height: 28px;
+	margin-bottom: 3px;
+	color: var(--muted);
+}
+
+.icon-btn:disabled {
+	color: var(--muted);
+	opacity: 0.45;
+	cursor: default;
+}
+
+.icon-btn:focus-visible,
+.btn:focus-visible,
+.tile:focus-visible,
+.menu-item:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 1px;
+}
+
+.omnibox {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	height: 34px;
+	margin: 0 6px;
+	padding: 0 14px;
+	border-radius: 17px;
+	background: var(--omni);
+	border: 1px solid transparent;
+	transition: background-color 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+
+.omnibox:hover {
+	background: var(--tab-hover);
+}
+
+.omnibox:focus-within {
+	background: var(--omni-focus);
+	border-color: var(--accent);
+	box-shadow: 0 0 0 1px var(--accent);
+}
+
+.omni-icon {
+	display: grid;
+	place-items: center;
+	color: var(--muted);
+}
+
+.omnibox input {
+	flex: 1;
+	min-width: 0;
+	height: 100%;
+	border: 0;
+	outline: 0;
+	background: transparent;
+	color: var(--text);
+	font: 14px system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
+}
+
+.omnibox input::placeholder {
+	color: var(--muted);
+}
+
+.status-dot {
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--muted);
+}
+
+.menu-btn .status-dot {
+	position: absolute;
+	top: 6px;
+	right: 6px;
+	width: 7px;
+	height: 7px;
+	box-shadow: 0 0 0 2px var(--toolbar);
+}
+
+.status-dot[data-state="ready"] {
+	background: var(--ok);
+}
+
+.status-dot[data-state="error"] {
+	background: var(--danger);
+}
+
+.status-dot[data-state="connecting"] {
+	background: #f9ab00;
+}
+
+/* ---------- bookmarks bar ---------- */
+
+.bookmarks[hidden] {
+	display: none;
+}
+
+.bookmarks {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	height: 32px;
+	padding: 0 8px;
+	background: var(--toolbar);
+	border-bottom: 1px solid var(--border);
+	overflow-x: auto;
+	scrollbar-width: none;
+}
+
+.bookmark {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	flex: none;
+	max-width: 200px;
+	height: 26px;
+	padding: 0 10px 0 8px;
+	border: 0;
+	border-radius: 13px;
+	background: transparent;
+	color: var(--text);
+	font-size: 12px;
+	cursor: pointer;
+}
+
+.bookmark:hover {
+	background: var(--tab-hover);
+}
+
+.bookmark:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -2px;
+}
+
+.bm-icon {
+	display: grid;
+	place-items: center;
+	flex: none;
+	width: 16px;
+	height: 16px;
+	color: var(--muted);
+}
+
+
+.bm-name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* loading bar */
+.progress {
+	position: relative;
+	height: 2px;
+	margin-top: -2px;
+	overflow: hidden;
+	pointer-events: none;
+}
+
+.progress > div {
+	position: absolute;
+	inset: 0 auto 0 0;
+	width: 30%;
+	background: var(--accent);
+	opacity: 0;
+	transform: translateX(-100%);
+}
+
+.progress.on > div {
+	opacity: 1;
+	animation: progress 1.1s ease-in-out infinite;
+}
+
+@keyframes progress {
+	from {
+		transform: translateX(-100%);
+	}
+	to {
+		transform: translateX(400%);
+	}
+}
+
+/* ---------- fullscreen ---------- */
+/* the whole app goes fullscreen: our tabs, toolbar and bookmarks stay, only the real
+   browser's UI disappears */
+
+.browser.pseudo-fs {
+	position: fixed;
+	inset: 0;
+	z-index: 1000;
+}
+
+.fs-hint {
+	position: absolute;
+	top: 24px;
+	left: 50%;
+	z-index: 11;
+	padding: 10px 16px;
+	border-radius: 8px;
+	background: rgba(32, 33, 36, 0.88);
+	color: #fff;
+	font-size: 14px;
+	transform: translateX(-50%);
+	pointer-events: none;
+}
+
+.fs-hint[hidden] {
+	display: none;
+}
+
+.fs-hint kbd {
+	padding: 1px 6px;
+	border: 1px solid rgba(255, 255, 255, 0.5);
+	border-radius: 4px;
+	font: inherit;
+}
+
+/* ---------- menu ---------- */
+
+.menu {
+	position: fixed;
+	top: 80px;
+	right: 10px;
+	z-index: 50;
+	width: 340px;
+	max-width: calc(100vw - 20px);
+	padding: 6px 0;
+	border-radius: 10px;
+	background: var(--menu);
+	box-shadow: var(--shadow);
+}
+
+.menu section {
+	padding: 10px 16px;
+}
+
+.menu section + section {
+	border-top: 1px solid var(--border);
+	padding: 6px 0;
+}
+
+.menu h2 {
+	margin: 0 0 10px;
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.field {
+	display: grid;
+	gap: 4px;
+	margin-bottom: 10px;
+}
+
+.field span {
+	color: var(--muted);
+	font-size: 12px;
+}
+
+.field input,
+.field select {
+	height: 32px;
+	padding: 0 10px;
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	background: var(--omni);
+	color: var(--text);
+	font: inherit;
+}
+
+.field input:focus,
+.field select:focus {
+	outline: 2px solid var(--accent);
+	outline-offset: -1px;
+}
+
+.conn {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: -4px 0 12px;
+	color: var(--muted);
+	font-size: 12px;
+	overflow-wrap: anywhere;
+}
+
+.conn .status-dot {
+	flex: none;
+}
+
+.check {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	margin: 0 0 12px;
+	font-size: 13px;
+	cursor: pointer;
+}
+
+.check input {
+	margin: 2px 0 0;
+	accent-color: var(--accent);
+}
+
+.check small {
+	color: var(--muted);
+}
+
+.row {
+	display: flex;
+	gap: 8px;
+}
+
+.btn {
+	height: 32px;
+	padding: 0 14px;
+	border: 1px solid var(--border);
+	border-radius: 16px;
+	background: transparent;
+	cursor: pointer;
+}
+
+.btn:hover {
+	background: var(--tab-hover);
+}
+
+.btn.primary {
+	border-color: var(--accent);
+	background: var(--accent);
+	color: var(--accent-text);
+}
+
+.btn.primary:hover {
+	filter: brightness(1.08);
+}
+
+.menu-item {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	width: 100%;
+	height: 36px;
+	padding: 0 16px;
+	border: 0;
+	background: transparent;
+	text-align: left;
+	cursor: pointer;
+}
+
+.menu-item:hover {
+	background: var(--tab-hover);
+}
+
+.menu-item svg {
+	color: var(--muted);
+}
+.menu-item kbd {
+	margin-left: auto;
+	color: var(--muted);
+	font: 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* ---------- about dialog ---------- */
+
+dialog.about {
+	max-width: 560px;
+	padding: 20px 24px;
+	border: 0;
+	border-radius: 12px;
+	background: var(--menu);
+	color: var(--text);
+	box-shadow: var(--shadow);
+}
+
+dialog.about::backdrop {
+	background: rgba(0, 0, 0, 0.45);
+}
+
+dialog.about h2 {
+	margin-top: 0;
+	font-size: 18px;
+}
+
+dialog.about li {
+	margin-bottom: 6px;
+}
+
+dialog.about code {
+	font-size: 12px;
+}
+
+dialog.about form {
+	display: flex;
+	justify-content: flex-end;
+	margin-top: 16px;
+}
+
+/* ---------- new tab page ---------- */
+
+.newtab,
+.error-page {
+	position: absolute;
+	inset: 0;
+	z-index: 2;
+	overflow: auto;
+	background: var(--pane);
+}
+
+.newtab-inner {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	max-width: 620px;
+	margin: 0 auto;
+	padding: 16vh 16px 40px;
+}
+
+.newtab-greeting {
+	margin-bottom: 28px;
+	font-size: 30px;
+	font-weight: 400;
+	letter-spacing: -0.01em;
+}
+
+.newtab-search {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	width: 100%;
+	height: 48px;
+	padding: 0 20px;
+	border: 1px solid var(--border);
+	border-radius: 24px;
+	background: var(--omni);
+	transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.newtab-search:focus-within {
+	border-color: var(--accent);
+	box-shadow: 0 1px 8px rgba(0, 0, 0, 0.18);
+}
+
+.newtab-search-icon {
+	display: grid;
+	color: var(--muted);
+}
+
+.newtab-search input {
+	flex: 1;
+	min-width: 0;
+	height: 100%;
+	border: 0;
+	outline: 0;
+	background: transparent;
+	color: var(--text);
+	font-size: 16px;
+}
+
+.newtab-tiles {
+	display: grid;
+	grid-template-columns: repeat(4, 112px);
+	gap: 8px;
+	margin-top: 36px;
+}
+
+.tile {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+	padding: 14px 6px 12px;
+	border-radius: 10px;
+	color: var(--text);
+	text-decoration: none;
+}
+
+.tile:hover {
+	background: var(--tab-hover);
+}
+
+.tile-icon {
+	display: grid;
+	place-items: center;
+	width: 44px;
+	height: 44px;
+	border-radius: 50%;
+	color: #fff;
+	font-size: 18px;
+	font-weight: 600;
+}
+
+.tile-name {
+	max-width: 100%;
+	overflow: hidden;
+	font-size: 12px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.newtab-note {
+	max-width: 420px;
+	margin-top: 40px;
+	color: var(--muted);
+	font-size: 12px;
+	text-align: center;
+}
+
+@media (max-width: 560px) {
+	.newtab-tiles {
+		grid-template-columns: repeat(4, 1fr);
+		width: 100%;
+	}
+	.toolbar [data-act="home"] {
+		display: none;
+	}
+}
+
+/* ---------- error page ---------- */
+
+.error-inner {
+	max-width: 560px;
+	margin: 0 auto;
+	padding: 14vh 24px 40px;
+}
+
+.error-icon {
+	color: var(--muted);
+}
+
+.error-page h1 {
+	margin: 16px 0 8px;
+	font-size: 22px;
+	font-weight: 500;
+}
+
+.error-url {
+	margin: 0 0 12px;
+	color: var(--muted);
+	overflow-wrap: anywhere;
+}
+
+.error-msg {
+	margin: 0 0 12px;
+	padding: 10px 12px;
+	border-radius: 8px;
+	background: var(--omni);
+	font: 12px ui-monospace, SFMono-Regular, Menlo, monospace;
+	overflow-wrap: anywhere;
+}
+
+.error-hint {
+	margin: 0 0 20px;
+	color: var(--muted);
+}

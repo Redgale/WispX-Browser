@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Launcher</title>
+		<style>
+			:root {
+				color-scheme: dark;
+				--bg: #202124;
+				--panel: #2b2c2f;
+				--text: #e8eaed;
+				--muted: #9aa0a6;
+				--accent: #8ab4f8;
+			}
+			body {
+				margin: 0;
+				background: var(--bg);
+				color: var(--text);
+				font: 14px/1.5 system-ui, sans-serif;
+			}
+			main {
+				max-width: 760px;
+				margin: 0 auto;
+				padding: 24px 16px;
+			}
+			h1 {
+				font-size: 20px;
+				margin: 0 0 4px;
+			}
+			p {
+				color: var(--muted);
+				margin: 0 0 16px;
+			}
+			.cfg {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 12px;
+				align-items: center;
+				margin-bottom: 20px;
+			}
+			.cfg input[type="text"] {
+				flex: 1 1 260px;
+				height: 32px;
+				padding: 0 10px;
+				border: 1px solid #5f6368;
+				border-radius: 6px;
+				background: var(--panel);
+				color: var(--text);
+				font: inherit;
+			}
+			.modes {
+				display: grid;
+				gap: 8px;
+			}
+			button {
+				display: grid;
+				gap: 2px;
+				text-align: left;
+				padding: 10px 14px;
+				border: 1px solid #3c4043;
+				border-radius: 8px;
+				background: var(--panel);
+				color: var(--text);
+				font: inherit;
+				cursor: pointer;
+			}
+			button:hover {
+				border-color: var(--accent);
+			}
+			button small {
+				color: var(--muted);
+			}
+			code {
+				color: var(--accent);
+			}
+			#stage {
+				position: fixed;
+				inset: 0;
+				display: none;
+				background: var(--bg);
+			}
+			#stage.on {
+				display: block;
+			}
+			#stage iframe {
+				width: 100%;
+				height: calc(100% - 32px);
+				border: 0;
+			}
+			#stage .bar {
+				height: 32px;
+				display: flex;
+				align-items: center;
+				gap: 12px;
+				padding: 0 12px;
+				background: #35363a;
+				color: var(--muted);
+				font-size: 12px;
+			}
+			#stage .bar a {
+				color: var(--accent);
+				cursor: pointer;
+			}
+		</style>
+	</head>
+	<body>
+		<main>
+			<h1>Launch the browser</h1>
+			<p>Opens <code>index.html</code> from this server in each of the contexts it supports, with the wisp server below.</p>
+			<div class="cfg">
+				<input id="wisp" type="text" spellcheck="false" aria-label="Wisp server" />
+				<label><input id="wispx" type="checkbox" checked /> WispX</label>
+			</div>
+			<div class="modes">
+				<button data-mode="http">Normal page <small>http origin, new tab</small></button>
+				<button data-mode="blob">From a blob: url <small>http origin, new tab</small></button>
+				<button data-mode="blank">about:blank popup <small>http origin, written into a new window</small></button>
+				<button data-mode="data">Inside a data: frame <small>null origin, embedded here</small></button>
+				<button data-mode="data-blob">blob:null page <small>null origin, new tab (click the button in the frame)</small></button>
+				<button data-mode="data-popup">about:blank popup at a null origin <small>null origin, new window (click the button in the frame)</small></button>
+				<button data-mode="sandbox">Sandboxed frame without allow-same-origin <small>not supported; shows how it says so</small></button>
+			</div>
+			<p style="margin-top: 20px">
+				As a file: open <code id="file"></code> directly (null origin; Chrome blocks blob: scripts in workers there, so classic
+				workers run without them and module workers don't work).
+			</p>
+		</main>
+		<div id="stage"><div class="bar"><span id="stage-label"></span><a id="stage-close">close</a></div></div>
+		<script>
+			const wispInput = document.getElementById("wisp");
+			const wispxInput = document.getElementById("wispx");
+			wispInput.value = `ws://${location.hostname}:4000/`;
+			document.getElementById("file").textContent = "dist/index.html#wisp=" + wispInput.value;
+
+			const config = () => ({ wisp: wispInput.value.trim(), wispx: wispxInput.checked ? "1" : "0" });
+			const query = () => new URLSearchParams(config()).toString();
+			const app = () => fetch("/index.html").then((r) => r.text());
+			// settings for a page that has no url to put them in
+			const withConfig = (html) =>
+				html.replace("<head>", "<head><script>window.SJL_CONFIG=" + JSON.stringify(config()) + "<\/script>");
+
+			// a document at a null origin: it gets the app by postMessage and writes it, or
+			// offers to open it from there (a popup needs a click inside that document)
+			const LOADER = `<!doctype html><meta charset="utf-8"><body style="margin:0;background:#202124;color:#e8eaed;font:14px system-ui;display:grid;place-items:center;height:100vh"><script>
+addEventListener("message", (e) => {
+	const { html, how } = e.data;
+	if (how === "write") {
+		document.open();
+		document.write(html);
+		document.close();
+		return;
+	}
+	const b = document.createElement("button");
+	b.style.cssText = "padding:12px 18px;font:inherit;border-radius:8px;cursor:pointer";
+	b.textContent = how === "blob" ? "Open the app at blob:null (origin " + self.origin + ")" : "Open the app in an about:blank popup (origin " + self.origin + ")";
+	b.onclick = () => {
+		if (how === "blob") window.open(URL.createObjectURL(new Blob([html], { type: "text/html" })));
+		else {
+			const w = window.open("about:blank");
+			w.document.open();
+			w.document.write(html);
+			w.document.close();
+		}
+	};
+	document.body.append(b);
+}, { once: true });
+parent.postMessage("sjl-loader-ready", "*");
+<\/script>`;
+
+			function stage(label, frame) {
+				const s = document.getElementById("stage");
+				s.querySelector("iframe")?.remove();
+				document.getElementById("stage-label").textContent = label;
+				s.append(frame);
+				s.classList.add("on");
+			}
+			document.getElementById("stage-close").onclick = () => {
+				document.getElementById("stage").classList.remove("on");
+				document.querySelector("#stage iframe")?.remove();
+			};
+
+			async function inLoader(label, how, sandbox) {
+				const html = withConfig(await app());
+				const f = document.createElement("iframe");
+				f.allow = "fullscreen; autoplay; clipboard-read; clipboard-write; encrypted-media";
+				if (sandbox) {
+					f.sandbox = "allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals";
+					f.srcdoc = LOADER;
+				} else f.src = "data:text/html;charset=utf-8," + encodeURIComponent(LOADER);
+				const ready = (e) => {
+					if (e.source !== f.contentWindow || e.data !== "sjl-loader-ready") return;
+					removeEventListener("message", ready);
+					f.contentWindow.postMessage({ html, how }, "*");
+				};
+				addEventListener("message", ready);
+				stage(label, f);
+				return f;
+			}
+
+			const modes = {
+				http: () => window.open("/#" + query()),
+				blob: async () => {
+					const url = URL.createObjectURL(new Blob([await app()], { type: "text/html" }));
+					return window.open(url + "#" + query());
+				},
+				blank: async () => {
+					const w = window.open("about:blank");
+					const html = withConfig(await app());
+					w.document.open();
+					w.document.write(html);
+					w.document.close();
+					return w;
+				},
+				data: () => inLoader("data: frame (null origin)", "write"),
+				"data-blob": () => inLoader("data: frame: click the button to open the blob:null page", "blob"),
+				"data-popup": () => inLoader("data: frame: click the button to open the popup", "popup"),
+				sandbox: () => inLoader("sandboxed frame without allow-same-origin", "write", true),
+			};
+			for (const b of document.querySelectorAll("[data-mode]")) b.onclick = () => modes[b.dataset.mode]();
+			window.launch = modes;
+		</script>
+	</body>
+</html>
